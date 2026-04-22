@@ -5,21 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Padel Scoreboard</title>
 
-  manifest.json
-  <meta name="theme-color" content="#000">
-
   <style>
     body {
       margin: 0;
       background: #000;
       color: white;
       font-family: Arial, sans-serif;
+      text-align: center;
     }
 
-    h1 {
-      text-align: center;
-      margin: 10px 0;
-    }
+    h1 { margin: 10px 0; }
 
     .container {
       padding: 10px;
@@ -28,23 +23,19 @@
       gap: 10px;
     }
 
-    .players {
-      text-align: center;
-    }
-
     .players button {
       margin: 5px;
-      padding: 10px 15px;
+      padding: 10px 16px;
+      font-size: 18px;
       border-radius: 10px;
       border: none;
-      font-size: 18px;
       background: #444;
       color: white;
     }
 
     .players button.used {
-      background: #222;
       opacity: 0.4;
+      background: #222;
     }
 
     .team-select button {
@@ -61,31 +52,30 @@
     .team {
       flex: 1;
       background: #111;
-      border-radius: 20px;
-      padding: 15px;
-      text-align: center;
+      border-radius: 15px;
+      padding: 10px;
     }
 
     .names {
-      font-size: 22px;
-      min-height: 50px;
+      font-size: 20px;
       opacity: 0.8;
+      min-height: 30px;
     }
 
     .score {
-      font-size: 14vw;
+      font-size: 80px;
       font-weight: bold;
     }
 
     .games {
-      font-size: 24px;
+      font-size: 20px;
     }
 
-    button.action {
+    .action {
       width: 100%;
-      font-size: 24px;
       margin-top: 10px;
       padding: 12px;
+      font-size: 22px;
       border-radius: 12px;
       border: none;
       background: #00c853;
@@ -104,24 +94,24 @@
 
 <div class="container">
 
-  <!-- FAST SPILLERLISTE -->
+  <!-- SPILLERLISTE -->
   <div class="players">
-    <h3>Spillere</h3>
+    <h3>Spillere (klik for at tilføje)</h3>
     <div id="playerList"></div>
   </div>
 
-  <!-- VÆLG AKTIVT HOLD -->
-  <div class="team-select" style="text-align:center;">
+  <!-- VÆLG HOLD -->
+  <div class="team-select">
     <button onclick="setActiveTeam('A')">Vælg Hold A</button>
     <button onclick="setActiveTeam('B')">Vælg Hold B</button>
-    <p>Aktivt hold: <strong id="activeTeam">A</strong></p>
+    <p>Aktivt hold: <strong id="activeTeamText">A</strong></p>
   </div>
 
-  <!-- SCORE -->
+  <!-- HOLD -->
   <div class="teams">
 
     <div class="team">
-      <h2>HOLD A</h2>
+      <h2>Hold A</h2>
       <div class="names" id="namesA"></div>
       <div class="score" id="pointsA">0</div>
       <div class="games">Partier: <span id="gamesA">0</span></div>
@@ -129,7 +119,7 @@
     </div>
 
     <div class="team">
-      <h2>HOLD B</h2>
+      <h2>Hold B</h2>
       <div class="names" id="namesB"></div>
       <div class="score" id="pointsB">0</div>
       <div class="games">Partier: <span id="gamesB">0</span></div>
@@ -145,8 +135,8 @@
 <script>
   /* ---------- FASTE SPILLERE ---------- */
   const players = ["Mads", "Jonas", "Peter", "Martin", "Madsen"];
-  let activeTeam = "A";
 
+  let activeTeam = "A";
   let teamA = [];
   let teamB = [];
 
@@ -155,9 +145,18 @@
   let indexA = 0, indexB = 0;
   let gamesA = 0, gamesB = 0;
 
-  function setActiveTeam(t) {
-    activeTeam = t;
-    activeTeamEl.innerText = t;
+  const playerList = document.getElementById("playerList");
+  const namesA = document.getElementById("namesA");
+  const namesB = document.getElementById("namesB");
+  const pointsA = document.getElementById("pointsA");
+  const pointsB = document.getElementById("pointsB");
+  const gamesAEl = document.getElementById("gamesA");
+  const gamesBEl = document.getElementById("gamesB");
+  const activeTeamText = document.getElementById("activeTeamText");
+
+  function setActiveTeam(team) {
+    activeTeam = team;
+    activeTeamText.textContent = team;
   }
 
   function addPlayer(name) {
@@ -170,44 +169,44 @@
       if (teamB.length === 2) return alert("Hold B er fuldt");
       teamB.push(name);
     }
-    save();
     render();
   }
 
   function renderPlayers() {
     playerList.innerHTML = "";
     players.forEach(p => {
-      const b = document.createElement("button");
-      b.textContent = p;
-      if (teamA.includes(p) || teamB.includes(p)) b.classList.add("used");
-      b.onclick = () => addPlayer(p);
-      playerList.appendChild(b);
+      const btn = document.createElement("button");
+      btn.textContent = p;
+      if (teamA.includes(p) || teamB.includes(p)) btn.classList.add("used");
+      btn.onclick = () => addPlayer(p);
+      playerList.appendChild(btn);
     });
   }
 
   function render() {
-    namesA.innerText = teamA.join(" / ");
-    namesB.innerText = teamB.join(" / ");
-    pointsA.innerText = scoreSteps[indexA];
-    pointsB.innerText = scoreSteps[indexB];
-    gamesAEl.innerText = gamesA;
-    gamesBEl.innerText = gamesB;
+    namesA.textContent = teamA.join(" / ");
+    namesB.textContent = teamB.join(" / ");
+    pointsA.textContent = scoreSteps[indexA];
+    pointsB.textContent = scoreSteps[indexB];
+    gamesAEl.textContent = gamesA;
+    gamesBEl.textContent = gamesB;
     renderPlayers();
   }
 
   /* ---------- SCORE LOGIK (AD) ---------- */
-  function point(t) {
+  function point(team) {
     if (indexA === 3 && indexB === 3) {
-      t === "A" ? indexA = 4 : indexB = 4;
+      team === "A" ? indexA = 4 : indexB = 4;
       return render();
     }
 
-    if (indexA === 4) return t === "A" ? win("A") : resetDeuce();
-    if (indexB === 4) return t === "B" ? win("B") : resetDeuce();
+    if (indexA === 4) return team === "A" ? win("A") : resetDeuce();
+    if (indexB === 4) return team === "B" ? win("B") : resetDeuce();
 
-    t === "A" ? indexA++ : indexB++;
+    team === "A" ? indexA++ : indexB++;
     if (indexA === 4 && indexB < 3) return win("A");
     if (indexB === 4 && indexA < 3) return win("B");
+
     render();
   }
 
@@ -216,36 +215,23 @@
     render();
   }
 
-  function win(t) {
-    t === "A" ? gamesA++ : gamesB++;
+  function win(team) {
+    team === "A" ? gamesA++ : gamesB++;
     indexA = indexB = 0;
-    save();
     render();
-  }
-
-  /* ---------- GEM / NY KAMP ---------- */
-  function save() {
-    localStorage.setItem("padel", JSON.stringify({teamA,teamB,indexA,indexB,gamesA,gamesB}));
-  }
-
-  function load() {
-    const d = JSON.parse(localStorage.getItem("padel"));
-    if (!d) return;
-    ({teamA,teamB,indexA,indexB,gamesA,gamesB} = d);
   }
 
   function newMatch() {
     if (!confirm("Nulstil kamp og hold?")) return;
-    teamA = []; teamB = [];
+    teamA = [];
+    teamB = [];
     indexA = indexB = gamesA = gamesB = 0;
-    localStorage.removeItem("padel");
     render();
   }
 
-  load();
+  /* ---------- INIT ---------- */
   render();
 </script>
 
 </body>
 </html>
-``
