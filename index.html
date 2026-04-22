@@ -53,16 +53,25 @@ h1 { margin: 10px 0; }
 .score { font-size: 70px; font-weight: bold; }
 .games { font-size: 18px; }
 
+.controls {
+  display: flex;
+  gap: 6px;
+}
+
 button.action {
-  width: 100%;
+  flex: 1;
   padding: 12px;
   font-size: 20px;
   border-radius: 12px;
   border: none;
   background: #00c853;
   color: white;
-  margin-top: 6px;
 }
+
+button.minus {
+  background: #ff9800;
+}
+
 .reset { background: #d50000; }
 
 .board {
@@ -96,12 +105,16 @@ button.action {
 
 <!-- HOLD -->
 <div class="teams">
+
   <div class="team">
     <h2>Hold A</h2>
     <div class="names" id="namesA"></div>
     <div class="score" id="pointsA">0</div>
     <div class="games">Partier: <span id="gamesA">0</span></div>
-    <button class="action" onclick="point('A')">+ Point</button>
+    <div class="controls">
+      <button class="action" onclick="addPoint('A')">+ Point</button>
+      <button class="action minus" onclick="undoPoint()">−</button>
+    </div>
   </div>
 
   <div class="team">
@@ -109,19 +122,23 @@ button.action {
     <div class="names" id="namesB"></div>
     <div class="score" id="pointsB">0</div>
     <div class="games">Partier: <span id="gamesB">0</span></div>
-    <button class="action" onclick="point('B')">+ Point</button>
+    <div class="controls">
+      <button class="action" onclick="addPoint('B')">+ Point</button>
+      <button class="action minus" onclick="undoPoint()">−</button>
+    </div>
   </div>
+
 </div>
 
 <button class="action" onclick="endMatch()">AFSLUT KAMP</button>
 
-<!-- KAMPE -->
+<!-- KAMP-SCOREBOARD -->
 <div class="board">
   <h3>📋 Kampe</h3>
   <div id="matchBoard"></div>
 </div>
 
-<!-- STATISTIK -->
+<!-- SPILLERSTATISTIK -->
 <div class="board">
   <h3>🏆 Spillerstatistik</h3>
   <div id="playerStats"></div>
@@ -132,135 +149,177 @@ button.action {
 </div>
 
 <script>
-// FASTE SPILLERE
+/* ---------- DATA ---------- */
 const players = ["Mads","Jonas","Peter","Martin","Madsen"];
 const scoreSteps = [0,15,30,40,"AD"];
 
-let teamA=[], teamB=[];
-let activeTeam="A";
-let indexA=0, indexB=0;
-let gamesA=0, gamesB=0;
-let history=[];
-const stats={};
-players.forEach(p=>stats[p]={win:0,lose:0});
+let activeTeam = "A";
+let teamA = [], teamB = [];
 
-// UI refs
-const playerList=playerListEl=document.getElementById("playerList");
-const namesA=document.getElementById("namesA");
-const namesB=document.getElementById("namesB");
-const pointsA=document.getElementById("pointsA");
-const pointsB=document.getElementById("pointsB");
-const gamesAEl=document.getElementById("gamesA");
-const gamesBEl=document.getElementById("gamesB");
+let indexA = 0, indexB = 0;
+let gamesA = 0, gamesB = 0;
 
+// Undo stack
+let undoStack = [];
+
+// Kamp-historik og statistik
+let matchHistory = [];
+const stats = {};
+players.forEach(p => stats[p] = {win:0, lose:0});
+
+/* ---------- UI refs ---------- */
+const playerList = document.getElementById("playerList");
+const namesA = document.getElementById("namesA");
+const namesB = document.getElementById("namesB");
+const pointsA = document.getElementById("pointsA");
+const pointsB = document.getElementById("pointsB");
+const gamesAEl = document.getElementById("gamesA");
+const gamesBEl = document.getElementById("gamesB");
+const matchBoard = document.getElementById("matchBoard");
+const playerStats = document.getElementById("playerStats");
+
+/* ---------- HOLD ---------- */
 function setActiveTeam(t){
-  activeTeam=t;
-  document.getElementById("activeTeam").innerText=t;
+  activeTeam = t;
+  document.getElementById("activeTeam").innerText = t;
 }
 
 function addPlayer(name){
-  if(teamA.includes(name)||teamB.includes(name)) return;
-  if(activeTeam==="A" && teamA.length<2) teamA.push(name);
-  else if(activeTeam==="B" && teamB.length<2) teamB.push(name);
+  if(teamA.includes(name) || teamB.includes(name)) return;
+
+  if(activeTeam === "A") {
+    if(teamA.length === 2) return alert("Hold A er fuldt");
+    teamA.push(name);
+  } else {
+    if(teamB.length === 2) return alert("Hold B er fuldt");
+    teamB.push(name);
+  }
   render();
 }
 
 function renderPlayers(){
-  playerList.innerHTML="";
+  playerList.innerHTML = "";
   players.forEach(p=>{
-    const b=document.createElement("button");
-    b.textContent=p;
-    if(teamA.includes(p)||teamB.includes(p)) b.classList.add("used");
-    b.onclick=()=>addPlayer(p);
+    const b = document.createElement("button");
+    b.textContent = p;
+    if(teamA.includes(p) || teamB.includes(p)) b.classList.add("used");
+    b.onclick = () => addPlayer(p);
     playerList.appendChild(b);
   });
 }
 
-function render(){
-  namesA.innerText=teamA.join(" / ");
-  namesB.innerText=teamB.join(" / ");
-  pointsA.innerText=scoreSteps[indexA];
-  pointsB.innerText=scoreSteps[indexB];
-  gamesAEl.innerText=gamesA;
-  gamesBEl.innerText=gamesB;
-  renderPlayers();
-  renderMatches();
-  renderStats();
+/* ---------- UNDO ---------- */
+function saveState(){
+  undoStack.push({indexA, indexB, gamesA, gamesB});
 }
 
-// ✅ KORREKT PARTI-LOGIK (AD)
-function point(team){
+function undoPoint(){
+  if(undoStack.length === 0) return;
+  const prev = undoStack.pop();
+  ({indexA, indexB, gamesA, gamesB} = prev);
+  render();
+}
 
-  // Deuce
-  if(indexA===3 && indexB===3){
-    team==="A" ? indexA=4 : indexB=4;
-    render(); return;
+/* ---------- SCORE LOGIK (AD) ---------- */
+function addPoint(team){
+  saveState();
+
+  if(indexA === 3 && indexB === 3){
+    team === "A" ? indexA = 4 : indexB = 4;
+    return render();
   }
 
-  // AD A
-  if(indexA===4){
-    team==="A" ? winGame("A") : resetDeuce();
+  if(indexA === 4){
+    team === "A" ? winGame("A") : resetDeuce();
     return;
   }
 
-  // AD B
-  if(indexB===4){
-    team==="B" ? winGame("B") : resetDeuce();
+  if(indexB === 4){
+    team === "B" ? winGame("B") : resetDeuce();
     return;
   }
 
-  // Normal
-  team==="A" ? indexA++ : indexB++;
+  team === "A" ? indexA++ : indexB++;
 
-  // Vinder før deuce
-  if(indexA===4 && indexB<3) return winGame("A");
-  if(indexB===4 && indexA<3) return winGame("B");
+  if(indexA === 4 && indexB < 3) return winGame("A");
+  if(indexB === 4 && indexA < 3) return winGame("B");
 
   render();
 }
 
 function resetDeuce(){
-  indexA=3; indexB=3;
+  indexA = 3;
+  indexB = 3;
   render();
 }
 
 function winGame(team){
-  team==="A" ? gamesA++ : gamesB++;
-  indexA=0; indexB=0;
+  team === "A" ? gamesA++ : gamesB++;
+  indexA = 0;
+  indexB = 0;
   render();
 }
 
-// AFSLUT KAMP
+/* ---------- AFSLUT KAMP ---------- */
 function endMatch(){
-  if(teamA.length!==2||teamB.length!==2) return alert("Hold mangler spillere");
-  history.push({a:teamA.join(" / "),b:teamB.join(" / "),sa:gamesA,sb:gamesB});
-  const winners=gamesA>gamesB?teamA:teamB;
-  const losers=gamesA>gamesB?teamB:teamA;
-  winners.forEach(p=>stats[p].win++);
-  losers.forEach(p=>stats[p].lose++);
+  if(teamA.length !== 2 || teamB.length !== 2){
+    alert("Begge hold skal have 2 spillere");
+    return;
+  }
+
+  matchHistory.push({
+    a: teamA.join(" / "),
+    b: teamB.join(" / "),
+    sa: gamesA,
+    sb: gamesB
+  });
+
+  const winners = gamesA > gamesB ? teamA : teamB;
+  const losers  = gamesA > gamesB ? teamB : teamA;
+
+  winners.forEach(p => stats[p].win++);
+  losers.forEach(p => stats[p].lose++);
+
   render();
+}
+
+/* ---------- RENDER ---------- */
+function render(){
+  namesA.innerText = teamA.join(" / ");
+  namesB.innerText = teamB.join(" / ");
+  pointsA.innerText = scoreSteps[indexA];
+  pointsB.innerText = scoreSteps[indexB];
+  gamesAEl.innerText = gamesA;
+  gamesBEl.innerText = gamesB;
+  renderPlayers();
+  renderMatches();
+  renderStats();
 }
 
 function renderMatches(){
-  const b=document.getElementById("matchBoard");
-  b.innerHTML="";
-  history.slice().reverse().forEach(m=>{
-    b.innerHTML+=`<div><strong>${m.a}</strong> ${m.sa} – ${m.sb} <strong>${m.b}</strong></div>`;
+  matchBoard.innerHTML = "";
+  matchHistory.slice().reverse().forEach(m=>{
+    matchBoard.innerHTML +=
+      `<div><strong>${m.a}</strong> ${m.sa} – ${m.sb} <strong>${m.b}</strong></div>`;
   });
 }
 
 function renderStats(){
-  const s=document.getElementById("playerStats");
-  s.innerHTML="";
+  playerStats.innerHTML = "";
   players.forEach(p=>{
-    s.innerHTML+=`<div>${p}: vundet ${stats[p].win} – tabt ${stats[p].lose}</div>`;
+    const s = stats[p];
+    playerStats.innerHTML +=
+      `<div>${p}: vundet ${s.win} – tabt ${s.lose}</div>`;
   });
 }
 
+/* ---------- NY KAMP ---------- */
 function newMatch(){
   if(!confirm("Start ny kamp?")) return;
-  teamA=[]; teamB=[];
-  indexA=indexB=gamesA=gamesB=0;
+  teamA = [];
+  teamB = [];
+  indexA = indexB = gamesA = gamesB = 0;
+  undoStack = [];
   render();
 }
 
