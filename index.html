@@ -1,91 +1,81 @@
+
 <!DOCTYPE html>
 <html lang="da">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Padel Scoreboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Padel Scoreboard</title>
 
-  <style>
-    body {
-      margin: 0;
-      background: #000;
-      color: white;
-      font-family: Arial, sans-serif;
-      text-align: center;
-    }
+<style>
+body {
+  margin: 0;
+  background: #000;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+h1 { margin: 10px 0; }
 
-    h1 { margin: 10px 0; }
+.container {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-    .container {
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+.players button {
+  margin: 5px;
+  padding: 10px 16px;
+  font-size: 18px;
+  border-radius: 10px;
+  border: none;
+  background: #444;
+  color: white;
+}
+.players button.used {
+  background: #222;
+  opacity: 0.4;
+}
 
-    .players button {
-      margin: 5px;
-      padding: 10px 16px;
-      font-size: 18px;
-      border-radius: 10px;
-      border: none;
-      background: #444;
-      color: white;
-    }
+.teams {
+  display: flex;
+  gap: 10px;
+}
 
-    .players button.used {
-      opacity: 0.4;
-      background: #222;
-    }
+.team {
+  flex: 1;
+  background: #111;
+  border-radius: 15px;
+  padding: 10px;
+}
 
-    .team-select button {
-      margin: 5px;
-      padding: 10px;
-      font-size: 18px;
-    }
+.names { font-size: 18px; opacity: 0.85; min-height: 24px; }
+.score { font-size: 70px; font-weight: bold; }
+.games { font-size: 18px; }
 
-    .teams {
-      display: flex;
-      gap: 10px;
-    }
+button.action {
+  width: 100%;
+  padding: 12px;
+  font-size: 20px;
+  border-radius: 12px;
+  border: none;
+  background: #00c853;
+  color: white;
+  margin-top: 6px;
+}
+.reset { background: #d50000; }
 
-    .team {
-      flex: 1;
-      background: #111;
-      border-radius: 15px;
-      padding: 10px;
-    }
-
-    .names {
-      font-size: 20px;
-      opacity: 0.8;
-      min-height: 30px;
-    }
-
-    .score {
-      font-size: 80px;
-      font-weight: bold;
-    }
-
-    .games {
-      font-size: 20px;
-    }
-
-    .action {
-      width: 100%;
-      margin-top: 10px;
-      padding: 12px;
-      font-size: 22px;
-      border-radius: 12px;
-      border: none;
-      background: #00c853;
-      color: white;
-    }
-
-    .reset {
-      background: #d50000;
-    }
-  </style>
+.board {
+  background: #111;
+  border-radius: 12px;
+  padding: 10px;
+  text-align: left;
+}
+.board div {
+  padding: 6px 0;
+  border-bottom: 1px solid #333;
+}
+</style>
 </head>
 
 <body>
@@ -94,143 +84,187 @@
 
 <div class="container">
 
-  <!-- SPILLERLISTE -->
-  <div class="players">
-    <h3>Spillere (klik for at tilføje)</h3>
-    <div id="playerList"></div>
+<!-- SPILLERE -->
+<div class="players">
+  <h3>Spillere (klik)</h3>
+  <div id="playerList"></div>
+</div>
+
+<p>Aktivt hold: <strong id="activeTeam">A</strong></p>
+<button onclick="setActiveTeam('A')">Vælg Hold A</button>
+<button onclick="setActiveTeam('B')">Vælg Hold B</button>
+
+<!-- HOLD -->
+<div class="teams">
+  <div class="team">
+    <h2>Hold A</h2>
+    <div class="names" id="namesA"></div>
+    <div class="score" id="pointsA">0</div>
+    <div class="games">Partier: <span id="gamesA">0</span></div>
+    <button class="action" onclick="point('A')">+ Point</button>
   </div>
 
-  <!-- VÆLG HOLD -->
-  <div class="team-select">
-    <button onclick="setActiveTeam('A')">Vælg Hold A</button>
-    <button onclick="setActiveTeam('B')">Vælg Hold B</button>
-    <p>Aktivt hold: <strong id="activeTeamText">A</strong></p>
+  <div class="team">
+    <h2>Hold B</h2>
+    <div class="names" id="namesB"></div>
+    <div class="score" id="pointsB">0</div>
+    <div class="games">Partier: <span id="gamesB">0</span></div>
+    <button class="action" onclick="point('B')">+ Point</button>
   </div>
+</div>
 
-  <!-- HOLD -->
-  <div class="teams">
+<button class="action" onclick="endMatch()">AFSLUT KAMP</button>
 
-    <div class="team">
-      <h2>Hold A</h2>
-      <div class="names" id="namesA"></div>
-      <div class="score" id="pointsA">0</div>
-      <div class="games">Partier: <span id="gamesA">0</span></div>
-      <button class="action" onclick="point('A')">+ POINT</button>
-    </div>
+<!-- KAMPE -->
+<div class="board">
+  <h3>📋 Kampe</h3>
+  <div id="matchBoard"></div>
+</div>
 
-    <div class="team">
-      <h2>Hold B</h2>
-      <div class="names" id="namesB"></div>
-      <div class="score" id="pointsB">0</div>
-      <div class="games">Partier: <span id="gamesB">0</span></div>
-      <button class="action" onclick="point('B')">+ POINT</button>
-    </div>
+<!-- STATISTIK -->
+<div class="board">
+  <h3>🏆 Spillerstatistik</h3>
+  <div id="playerStats"></div>
+</div>
 
-  </div>
-
-  <button class="action reset" onclick="newMatch()">NY KAMP</button>
+<button class="action reset" onclick="newMatch()">NY KAMP</button>
 
 </div>
 
 <script>
-  /* ---------- FASTE SPILLERE ---------- */
-  const players = ["Mads", "Jonas", "Peter", "Martin", "Madsen"];
+// FASTE SPILLERE
+const players = ["Mads","Jonas","Peter","Martin","Madsen"];
+const scoreSteps = [0,15,30,40,"AD"];
 
-  let activeTeam = "A";
-  let teamA = [];
-  let teamB = [];
+let teamA=[], teamB=[];
+let activeTeam="A";
+let indexA=0, indexB=0;
+let gamesA=0, gamesB=0;
+let history=[];
+const stats={};
+players.forEach(p=>stats[p]={win:0,lose:0});
 
-  /* ---------- SCORE ---------- */
-  const scoreSteps = [0, 15, 30, 40, "AD"];
-  let indexA = 0, indexB = 0;
-  let gamesA = 0, gamesB = 0;
+// UI refs
+const playerList=playerListEl=document.getElementById("playerList");
+const namesA=document.getElementById("namesA");
+const namesB=document.getElementById("namesB");
+const pointsA=document.getElementById("pointsA");
+const pointsB=document.getElementById("pointsB");
+const gamesAEl=document.getElementById("gamesA");
+const gamesBEl=document.getElementById("gamesB");
 
-  const playerList = document.getElementById("playerList");
-  const namesA = document.getElementById("namesA");
-  const namesB = document.getElementById("namesB");
-  const pointsA = document.getElementById("pointsA");
-  const pointsB = document.getElementById("pointsB");
-  const gamesAEl = document.getElementById("gamesA");
-  const gamesBEl = document.getElementById("gamesB");
-  const activeTeamText = document.getElementById("activeTeamText");
+function setActiveTeam(t){
+  activeTeam=t;
+  document.getElementById("activeTeam").innerText=t;
+}
 
-  function setActiveTeam(team) {
-    activeTeam = team;
-    activeTeamText.textContent = team;
-  }
-
-  function addPlayer(name) {
-    if (teamA.includes(name) || teamB.includes(name)) return;
-
-    if (activeTeam === "A") {
-      if (teamA.length === 2) return alert("Hold A er fuldt");
-      teamA.push(name);
-    } else {
-      if (teamB.length === 2) return alert("Hold B er fuldt");
-      teamB.push(name);
-    }
-    render();
-  }
-
-  function renderPlayers() {
-    playerList.innerHTML = "";
-    players.forEach(p => {
-      const btn = document.createElement("button");
-      btn.textContent = p;
-      if (teamA.includes(p) || teamB.includes(p)) btn.classList.add("used");
-      btn.onclick = () => addPlayer(p);
-      playerList.appendChild(btn);
-    });
-  }
-
-  function render() {
-    namesA.textContent = teamA.join(" / ");
-    namesB.textContent = teamB.join(" / ");
-    pointsA.textContent = scoreSteps[indexA];
-    pointsB.textContent = scoreSteps[indexB];
-    gamesAEl.textContent = gamesA;
-    gamesBEl.textContent = gamesB;
-    renderPlayers();
-  }
-
-  /* ---------- SCORE LOGIK (AD) ---------- */
-  function point(team) {
-    if (indexA === 3 && indexB === 3) {
-      team === "A" ? indexA = 4 : indexB = 4;
-      return render();
-    }
-
-    if (indexA === 4) return team === "A" ? win("A") : resetDeuce();
-    if (indexB === 4) return team === "B" ? win("B") : resetDeuce();
-
-    team === "A" ? indexA++ : indexB++;
-    if (indexA === 4 && indexB < 3) return win("A");
-    if (indexB === 4 && indexA < 3) return win("B");
-
-    render();
-  }
-
-  function resetDeuce() {
-    indexA = indexB = 3;
-    render();
-  }
-
-  function win(team) {
-    team === "A" ? gamesA++ : gamesB++;
-    indexA = indexB = 0;
-    render();
-  }
-
-  function newMatch() {
-    if (!confirm("Nulstil kamp og hold?")) return;
-    teamA = [];
-    teamB = [];
-    indexA = indexB = gamesA = gamesB = 0;
-    render();
-  }
-
-  /* ---------- INIT ---------- */
+function addPlayer(name){
+  if(teamA.includes(name)||teamB.includes(name)) return;
+  if(activeTeam==="A" && teamA.length<2) teamA.push(name);
+  else if(activeTeam==="B" && teamB.length<2) teamB.push(name);
   render();
+}
+
+function renderPlayers(){
+  playerList.innerHTML="";
+  players.forEach(p=>{
+    const b=document.createElement("button");
+    b.textContent=p;
+    if(teamA.includes(p)||teamB.includes(p)) b.classList.add("used");
+    b.onclick=()=>addPlayer(p);
+    playerList.appendChild(b);
+  });
+}
+
+function render(){
+  namesA.innerText=teamA.join(" / ");
+  namesB.innerText=teamB.join(" / ");
+  pointsA.innerText=scoreSteps[indexA];
+  pointsB.innerText=scoreSteps[indexB];
+  gamesAEl.innerText=gamesA;
+  gamesBEl.innerText=gamesB;
+  renderPlayers();
+  renderMatches();
+  renderStats();
+}
+
+// ✅ KORREKT PARTI-LOGIK (AD)
+function point(team){
+
+  // Deuce
+  if(indexA===3 && indexB===3){
+    team==="A" ? indexA=4 : indexB=4;
+    render(); return;
+  }
+
+  // AD A
+  if(indexA===4){
+    team==="A" ? winGame("A") : resetDeuce();
+    return;
+  }
+
+  // AD B
+  if(indexB===4){
+    team==="B" ? winGame("B") : resetDeuce();
+    return;
+  }
+
+  // Normal
+  team==="A" ? indexA++ : indexB++;
+
+  // Vinder før deuce
+  if(indexA===4 && indexB<3) return winGame("A");
+  if(indexB===4 && indexA<3) return winGame("B");
+
+  render();
+}
+
+function resetDeuce(){
+  indexA=3; indexB=3;
+  render();
+}
+
+function winGame(team){
+  team==="A" ? gamesA++ : gamesB++;
+  indexA=0; indexB=0;
+  render();
+}
+
+// AFSLUT KAMP
+function endMatch(){
+  if(teamA.length!==2||teamB.length!==2) return alert("Hold mangler spillere");
+  history.push({a:teamA.join(" / "),b:teamB.join(" / "),sa:gamesA,sb:gamesB});
+  const winners=gamesA>gamesB?teamA:teamB;
+  const losers=gamesA>gamesB?teamB:teamA;
+  winners.forEach(p=>stats[p].win++);
+  losers.forEach(p=>stats[p].lose++);
+  render();
+}
+
+function renderMatches(){
+  const b=document.getElementById("matchBoard");
+  b.innerHTML="";
+  history.slice().reverse().forEach(m=>{
+    b.innerHTML+=`<div><strong>${m.a}</strong> ${m.sa} – ${m.sb} <strong>${m.b}</strong></div>`;
+  });
+}
+
+function renderStats(){
+  const s=document.getElementById("playerStats");
+  s.innerHTML="";
+  players.forEach(p=>{
+    s.innerHTML+=`<div>${p}: vundet ${stats[p].win} – tabt ${stats[p].lose}</div>`;
+  });
+}
+
+function newMatch(){
+  if(!confirm("Start ny kamp?")) return;
+  teamA=[]; teamB=[];
+  indexA=indexB=gamesA=gamesB=0;
+  render();
+}
+
+render();
 </script>
 
 </body>
