@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Padel Score</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #111;
+      color: white;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 15px 0;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      padding: 10px;
+    }
+
+    .team {
+      background: #1e1e1e;
+      border-radius: 15px;
+      padding: 20px;
+    }
+
+    .score {
+      font-size: 70px;
+      margin: 10px 0;
+    }
+
+    .games {
+      font-size: 24px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      width: 100%;
+      font-size: 28px;
+      padding: 20px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 12px;
+      background: #00c853;
+      color: white;
+    }
+
+    button:active {
+      background: #009624;
+    }
+
+    .reset {
+      background: #d50000;
+    }
+
+    .reset:active {
+      background: #9b0000;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🎾 Padel Score</h1>
+
+<div class="container">
+
+  <div class="team">
+    <h2>Hold A</h2>
+    <div class="score" id="pointsA">0</div>
+    <div class="games">Partier: <span id="gamesA">0</span></div>
+    <button onclick="point('A')">+ Point</button>
+  </div>
+
+  <div class="team">
+    <h2>Hold B</h2>
+    <div class="score" id="pointsB">0</div>
+    <div class="games">Partier: <span id="gamesB">0</span></div>
+    <button onclick="point('B')">+ Point</button>
+  </div>
+
+  <button class="reset" onclick="resetMatch()">Reset kamp</button>
+
+</div>
+
+<script>
+  // 0, 15, 30, 40, AD
+  let scoreSteps = [0, 15, 30, 40, "AD"];
+
+  let indexA = 0;
+  let indexB = 0;
+  let gamesA = 0;
+  let gamesB = 0;
+
+  function point(team) {
+
+    // DEUCE (40-40)
+    if (indexA === 3 && indexB === 3) {
+      if (team === 'A') {
+        indexA = 4; // AD A
+      } else {
+        indexB = 4; // AD B
+      }
+      update();
+      return;
+    }
+
+    // A har AD
+    if (indexA === 4) {
+      if (team === 'A') {
+        winGame('A');
+      } else {
+        indexA = 3;
+        indexB = 3;
+        update();
+      }
+      return;
+    }
+
+    // B har AD
+    if (indexB === 4) {
+      if (team === 'B') {
+        winGame('B');
+      } else {
+        indexA = 3;
+        indexB = 3;
+        update();
+      }
+      return;
+    }
+
+    // Normal point-opbygning
+    if (team === 'A') {
+      indexA++;
+    } else {
+      indexB++;
+    }
+
+    // Vinder direkte før deuce
+    if (indexA === 4 && indexB < 3) return winGame('A');
+    if (indexB === 4 && indexA < 3) return winGame('B');
+
+    update();
+  }
+
+  function winGame(team) {
+    if (team === 'A') gamesA++;
+    else gamesB++;
+
+    indexA = 0;
+    indexB = 0;
+    update();
+  }
+
+  function update() {
+    document.getElementById("pointsA").innerText = scoreSteps[indexA];
+    document.getElementById("pointsB").innerText = scoreSteps[indexB];
+    document.getElementById("gamesA").innerText = gamesA;
+    document.getElementById("gamesB").innerText = gamesB;
+  }
+
+  function resetMatch() {
+    indexA = 0;
+    indexB = 0;
+    gamesA = 0;
+    gamesB = 0;
+    update();
+  }
+
+  update();
+</script>
+
+</body>
+</html>
