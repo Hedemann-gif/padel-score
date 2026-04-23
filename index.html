@@ -8,32 +8,58 @@
 
 <style>
 body {
-  margin:0; background:#000; color:#fff;
-  font-family:Arial,sans-serif; text-align:center;
+  margin:0;
+  background:#000;
+  color:#fff;
+  font-family:Arial,sans-serif;
+  text-align:center;
 }
-.container { padding:10px; max-width:900px; margin:auto; }
-h1 { margin:10px 0; }
-
+.container {
+  padding:10px;
+  max-width:900px;
+  margin:auto;
+}
 button {
-  padding:10px; margin:4px; font-size:16px;
-  border:none; border-radius:8px;
+  padding:10px;
+  margin:4px;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
 }
 .primary { background:#00c853; color:white; }
 .warn { background:#ff9800; }
 .danger { background:#d50000; color:white; }
 
-button.disabled { opacity:.4; pointer-events:none; }
+button.disabled {
+  opacity:.4;
+  pointer-events:none;
+}
 
 .players button.used { opacity:.4; }
 
-.teams { display:flex; gap:10px; margin-top:10px; }
-.team { flex:1; background:#111; border-radius:10px; padding:10px; }
-
-.score { font-size:64px; font-weight:bold; }
+.teams {
+  display:flex;
+  gap:10px;
+  margin-top:10px;
+}
+.team {
+  flex:1;
+  background:#111;
+  padding:10px;
+  border-radius:10px;
+}
+.score {
+  font-size:64px;
+  font-weight:bold;
+}
 
 .board {
-  margin-top:20px; background:#111;
-  padding:10px; border-radius:10px; text-align:left;
+  margin-top:20px;
+  background:#111;
+  padding:10px;
+  border-radius:10px;
+  text-align:left;
 }
 </style>
 </head>
@@ -95,7 +121,7 @@ button.disabled { opacity:.4; pointer-events:none; }
 </div>
 
 <script>
-const STORE = "padelStable";
+const STORAGE_KEY = "padelFast";
 const scoreSteps = [0,15,30,40,"AD"];
 const players = ["Mads","Jonas","Peter","Martin","Madsen"];
 
@@ -112,18 +138,25 @@ let state = {
   stats:{},
   undo:[]
 };
-players.forEach(p=>state.stats[p]={win:0,lose:0});
+
+players.forEach(p => state.stats[p] = {win:0, lose:0});
 
 const el = id => document.getElementById(id);
 
-function save(){ localStorage.setItem(STORE, JSON.stringify(state)); }
-function load(){ const s=localStorage.getItem(STORE); if(s) state=JSON.parse(s); }
+/* ---------- STORAGE ---------- */
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function load(){
+  const s = localStorage.getItem(STORAGE_KEY);
+  if(s) state = JSON.parse(s);
+}
 
-function setActiveTeam(t){ state.activeTeam=t; render(); }
+/* ---------- HOLD ---------- */
+function setActiveTeam(t){ state.activeTeam = t; render(); }
 
 function addPlayer(p){
   if(state.started) return;
   if(state.teamA.includes(p)||state.teamB.includes(p)) return;
+
   if(state.activeTeam==="A" && state.teamA.length<2) state.teamA.push(p);
   if(state.activeTeam==="B" && state.teamB.length<2) state.teamB.push(p);
   render();
@@ -132,21 +165,46 @@ function addPlayer(p){
 function startMatch(){
   if(state.teamA.length!==2||state.teamB.length!==2)
     return alert("Vælg 2 spillere pr. hold");
-  state.started=true;
+  state.started = true;
   render();
 }
 
+/* ---------- PERFORMANCE-UNDO (KUN DET NØDVENDIGE) ---------- */
+function pushUndo(){
+  state.undo.push({
+    indexA: state.indexA,
+    indexB: state.indexB,
+    gamesA: state.gamesA,
+    gamesB: state.gamesB
+  });
+  if(state.undo.length > 50) state.undo.shift();
+}
+
+function undoPoint(){
+  if(!state.undo.length) return;
+  const u = state.undo.pop();
+  state.indexA = u.indexA;
+  state.indexB = u.indexB;
+  state.gamesA = u.gamesA;
+  state.gamesB = u.gamesB;
+  render();
+}
+
+/* ---------- SCORE ---------- */
 function addPoint(t){
   if(!state.started) return;
-  state.undo.push(JSON.parse(JSON.stringify(state)));
+  pushUndo();
 
   if(state.indexA===3 && state.indexB===3){
     t==="A"?state.indexA=4:state.indexB=4;
-  } else if(state.indexA===4){
+  }
+  else if(state.indexA===4){
     t==="A"?win("A"):resetDeuce();
-  } else if(state.indexB===4){
+  }
+  else if(state.indexB===4){
     t==="B"?win("B"):resetDeuce();
-  } else {
+  }
+  else{
     t==="A"?state.indexA++:state.indexB++;
     if(state.indexA===4 && state.indexB<3) win("A");
     if(state.indexB===4 && state.indexA<3) win("B");
@@ -161,30 +219,28 @@ function win(t){
   state.indexA=state.indexB=0;
 }
 
-function undoPoint(){
-  if(!state.undo.length) return;
-  state = state.undo.pop();
-  render();
-}
-
+/* ---------- KAMP ---------- */
 function endMatch(){
   if(!state.started) return;
   state.started=false;
+
   state.history.push({
     a:state.teamA.join(" / "),
     b:state.teamB.join(" / "),
     sa:state.gamesA,
     sb:state.gamesB
   });
-  const winners = state.gamesA>state.gamesB?state.teamA:state.teamB;
-  const losers  = state.gamesA>state.gamesB?state.teamB:state.teamA;
+
+  const winners = state.gamesA > state.gamesB ? state.teamA : state.teamB;
+  const losers  = state.gamesA > state.gamesB ? state.teamB : state.teamA;
   winners.forEach(p=>state.stats[p].win++);
   losers.forEach(p=>state.stats[p].lose++);
   render();
 }
 
 function newMatch(){
-  state.teamA=[]; state.teamB=[];
+  state.teamA=[];
+  state.teamB=[];
   state.indexA=state.indexB=state.gamesA=state.gamesB=0;
   state.started=false;
   state.undo=[];
@@ -193,18 +249,19 @@ function newMatch(){
 
 function clearAll(){
   if(!confirm("Slet ALT data?")) return;
-  localStorage.removeItem(STORE);
+  localStorage.removeItem(STORAGE_KEY);
   location.reload();
 }
 
+/* ---------- RENDER ---------- */
 function render(){
-  el("activeTeam").innerText=state.activeTeam;
-  el("namesA").innerText=state.teamA.join(" / ");
-  el("namesB").innerText=state.teamB.join(" / ");
-  el("pointsA").innerText=scoreSteps[state.indexA];
-  el("pointsB").innerText=scoreSteps[state.indexB];
-  el("gamesA").innerText=state.gamesA;
-  el("gamesB").innerText=state.gamesB;
+  el("activeTeam").innerText = state.activeTeam;
+  el("namesA").innerText = state.teamA.join(" / ");
+  el("namesB").innerText = state.teamB.join(" / ");
+  el("pointsA").innerText = scoreSteps[state.indexA];
+  el("pointsB").innerText = scoreSteps[state.indexB];
+  el("gamesA").innerText = state.gamesA;
+  el("gamesB").innerText = state.gamesB;
 
   el("playerList").innerHTML = players.map(p =>
     `<button class="${state.teamA.includes(p)||state.teamB.includes(p)?'used':''}"
@@ -213,7 +270,6 @@ function render(){
   ["addA","addB","undoA","undoB"].forEach(id=>{
     el(id).classList.toggle("disabled", !state.started);
   });
-
   el("startBtn").classList.toggle("disabled", state.started);
 
   el("matchBoard").innerHTML = state.history.slice().reverse()
