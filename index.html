@@ -19,6 +19,8 @@ body {
   max-width:900px;
   margin:auto;
 }
+h1 { margin:10px 0; }
+
 button {
   padding:10px;
   margin:4px;
@@ -43,12 +45,14 @@ button.disabled {
   gap:10px;
   margin-top:10px;
 }
+
 .team {
   flex:1;
   background:#111;
   padding:10px;
   border-radius:10px;
 }
+
 .score {
   font-size:64px;
   font-weight:bold;
@@ -61,6 +65,28 @@ button.disabled {
   border-radius:10px;
   text-align:left;
 }
+
+/* Statistik */
+.stats-row {
+  display:grid;
+  grid-template-columns: 1fr 80px 80px;
+  gap:10px;
+  padding:6px 0;
+  border-bottom:1px solid #333;
+  font-size:15px;
+}
+.stats-header {
+  font-weight:bold;
+  border-bottom:2px solid #555;
+}
+
+#matchStatus {
+  margin:10px 0;
+  padding:10px;
+  border-radius:8px;
+  font-size:18px;
+  font-weight:bold;
+}
 </style>
 </head>
 
@@ -68,6 +94,8 @@ button.disabled {
 <div class="container">
 
 <h1>🎾 PADEL SCORE</h1>
+
+<div id="matchStatus"></div>
 
 <h3>Spillere</h3>
 <div id="playerList"></div>
@@ -81,23 +109,23 @@ button.disabled {
 
 <div class="teams">
 
-<div class="team">
-  <h2>Hold A</h2>
-  <div id="namesA"></div>
-  <div class="score" id="pointsA">0</div>
-  Partier: <span id="gamesA">0</span><br>
-  <button class="primary disabled" id="addA" onclick="addPoint('A')">+ Point</button>
-  <button class="warn disabled" id="undoA" onclick="undoPoint()">−</button>
-</div>
+  <div class="team">
+    <h2>Hold A</h2>
+    <div id="namesA"></div>
+    <div class="score" id="pointsA">0</div>
+    Partier: <span id="gamesA">0</span><br>
+    <button class="primary disabled" id="addA" onclick="addPoint('A')">+ Point</button>
+    <button class="warn disabled" id="undoA" onclick="undoPoint()">−</button>
+  </div>
 
-<div class="team">
-  <h2>Hold B</h2>
-  <div id="namesB"></div>
-  <div class="score" id="pointsB">0</div>
-  Partier: <span id="gamesB">0</span><br>
-  <button class="primary disabled" id="addB" onclick="addPoint('B')">+ Point</button>
-  <button class="warn disabled" id="undoB" onclick="undoPoint()">−</button>
-</div>
+  <div class="team">
+    <h2>Hold B</h2>
+    <div id="namesB"></div>
+    <div class="score" id="pointsB">0</div>
+    Partier: <span id="gamesB">0</span><br>
+    <button class="primary disabled" id="addB" onclick="addPoint('B')">+ Point</button>
+    <button class="warn disabled" id="undoB" onclick="undoPoint()">−</button>
+  </div>
 
 </div>
 
@@ -121,168 +149,170 @@ button.disabled {
 </div>
 
 <script>
-const STORAGE_KEY = "padelFast";
-const scoreSteps = [0,15,30,40,"AD"];
-const players = ["Mads","Jonas","Peter","Martin","Madsen"];
+const STORAGE_KEY="padelFast";
+const scoreSteps=[0,15,30,40,"AD"];
+const players=["Mads","Jonas","Peter","Martin","Madsen"];
 
-let state = {
+let state={
   activeTeam:"A",
-  teamA:[],
-  teamB:[],
-  indexA:0,
-  indexB:0,
-  gamesA:0,
-  gamesB:0,
+  teamA:[], teamB:[],
+  indexA:0, indexB:0,
+  gamesA:0, gamesB:0,
   started:false,
   history:[],
   stats:{},
   undo:[]
 };
 
-players.forEach(p => state.stats[p] = {win:0, lose:0});
+players.forEach(p=>state.stats[p]={win:0,lose:0});
+const el=id=>document.getElementById(id);
 
-const el = id => document.getElementById(id);
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
+function load(){const s=localStorage.getItem(STORAGE_KEY);if(s)state=JSON.parse(s);}
 
-/* ---------- STORAGE ---------- */
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function load(){
-  const s = localStorage.getItem(STORAGE_KEY);
-  if(s) state = JSON.parse(s);
-}
-
-/* ---------- HOLD ---------- */
-function setActiveTeam(t){ state.activeTeam = t; render(); }
-
+function setActiveTeam(t){state.activeTeam=t;render();}
 function addPlayer(p){
-  if(state.started) return;
-  if(state.teamA.includes(p)||state.teamB.includes(p)) return;
-
-  if(state.activeTeam==="A" && state.teamA.length<2) state.teamA.push(p);
-  if(state.activeTeam==="B" && state.teamB.length<2) state.teamB.push(p);
+  if(state.started)return;
+  if(state.teamA.includes(p)||state.teamB.includes(p))return;
+  if(state.activeTeam==="A"&&state.teamA.length<2)state.teamA.push(p);
+  if(state.activeTeam==="B"&&state.teamB.length<2)state.teamB.push(p);
   render();
 }
 
 function startMatch(){
   if(state.teamA.length!==2||state.teamB.length!==2)
     return alert("Vælg 2 spillere pr. hold");
-  state.started = true;
+  state.started=true;
   render();
 }
 
-/* ---------- PERFORMANCE-UNDO (KUN DET NØDVENDIGE) ---------- */
+/* Undo (hurtig) */
 function pushUndo(){
-  state.undo.push({
-    indexA: state.indexA,
-    indexB: state.indexB,
-    gamesA: state.gamesA,
-    gamesB: state.gamesB
-  });
-  if(state.undo.length > 50) state.undo.shift();
+  state.undo.push({indexA:state.indexA,indexB:state.indexB,gamesA:state.gamesA,gamesB:state.gamesB});
+  if(state.undo.length>50)state.undo.shift();
 }
-
 function undoPoint(){
-  if(!state.undo.length) return;
-  const u = state.undo.pop();
-  state.indexA = u.indexA;
-  state.indexB = u.indexB;
-  state.gamesA = u.gamesA;
-  state.gamesB = u.gamesB;
+  if(!state.undo.length)return;
+  const u=state.undo.pop();
+  state.indexA=u.indexA; state.indexB=u.indexB;
+  state.gamesA=u.gamesA; state.gamesB=u.gamesB;
   render();
 }
 
-/* ---------- SCORE ---------- */
+/* Point */
 function addPoint(t){
-  if(!state.started) return;
+  if(!state.started)return;
   pushUndo();
 
-  if(state.indexA===3 && state.indexB===3){
+  if(state.indexA===3&&state.indexB===3){
     t==="A"?state.indexA=4:state.indexB=4;
-  }
-  else if(state.indexA===4){
+  } else if(state.indexA===4){
     t==="A"?win("A"):resetDeuce();
-  }
-  else if(state.indexB===4){
+  } else if(state.indexB===4){
     t==="B"?win("B"):resetDeuce();
-  }
-  else{
+  } else {
     t==="A"?state.indexA++:state.indexB++;
-    if(state.indexA===4 && state.indexB<3) win("A");
-    if(state.indexB===4 && state.indexA<3) win("B");
+    if(state.indexA===4&&state.indexB<3)win("A");
+    if(state.indexB===4&&state.indexA<3)win("B");
   }
   render();
 }
+function resetDeuce(){state.indexA=3;state.indexB=3;}
+function win(t){t==="A"?state.gamesA++:state.gamesB++;state.indexA=state.indexB=0;}
 
-function resetDeuce(){ state.indexA=3; state.indexB=3; }
-
-function win(t){
-  t==="A"?state.gamesA++:state.gamesB++;
-  state.indexA=state.indexB=0;
-}
-
-/* ---------- KAMP ---------- */
+/* Afslut kamp */
 function endMatch(){
-  if(!state.started) return;
+  if(!state.started)return;
   state.started=false;
-
   state.history.push({
     a:state.teamA.join(" / "),
     b:state.teamB.join(" / "),
     sa:state.gamesA,
     sb:state.gamesB
   });
-
-  const winners = state.gamesA > state.gamesB ? state.teamA : state.teamB;
-  const losers  = state.gamesA > state.gamesB ? state.teamB : state.teamA;
-  winners.forEach(p=>state.stats[p].win++);
-  losers.forEach(p=>state.stats[p].lose++);
+  const w=state.gamesA>state.gamesB?state.teamA:state.teamB;
+  const l=state.gamesA>state.gamesB?state.teamB:state.teamA;
+  w.forEach(p=>state.stats[p].win++);
+  l.forEach(p=>state.stats[p].lose++);
   render();
 }
 
 function newMatch(){
-  state.teamA=[];
-  state.teamB=[];
+  state.teamA=[]; state.teamB=[];
   state.indexA=state.indexB=state.gamesA=state.gamesB=0;
-  state.started=false;
-  state.undo=[];
+  state.started=false; state.undo=[];
   render();
 }
-
 function clearAll(){
-  if(!confirm("Slet ALT data?")) return;
+  if(!confirm("Slet ALT data?"))return;
   localStorage.removeItem(STORAGE_KEY);
   location.reload();
 }
 
-/* ---------- RENDER ---------- */
+/* Kampstatus */
+function renderMatchStatus(){
+  const m=el("matchStatus");
+  if(state.started){
+    m.textContent="🟢 KAMP I GANG";
+    m.style.background="#1b5e20";
+  } else if(state.teamA.length===2&&state.teamB.length===2){
+    m.textContent="⚪ Klar til kamp – tryk START KAMP";
+    m.style.background="#333";
+  } else {
+    m.textContent="⚪ Vælg spillere";
+    m.style.background="#333";
+  }
+}
+
+/* Render */
 function render(){
-  el("activeTeam").innerText = state.activeTeam;
-  el("namesA").innerText = state.teamA.join(" / ");
-  el("namesB").innerText = state.teamB.join(" / ");
-  el("pointsA").innerText = scoreSteps[state.indexA];
-  el("pointsB").innerText = scoreSteps[state.indexB];
-  el("gamesA").innerText = state.gamesA;
-  el("gamesB").innerText = state.gamesB;
+  el("activeTeam").innerText=state.activeTeam;
+  el("namesA").innerText=state.teamA.join(" / ");
+  el("namesB").innerText=state.teamB.join(" / ");
+  el("pointsA").innerText=scoreSteps[state.indexA];
+  el("pointsB").innerText=scoreSteps[state.indexB];
+  el("gamesA").innerText=state.gamesA;
+  el("gamesB").innerText=state.gamesB;
 
-  el("playerList").innerHTML = players.map(p =>
-    `<button class="${state.teamA.includes(p)||state.teamB.includes(p)?'used':''}"
-     onclick="addPlayer('${p}')">${p}</button>`).join("");
+  el("playerList").innerHTML=players.map(p=>
+    `<button class="${state.teamA.includes(p)||state.teamB.includes(p)?"used":""}"
+      onclick="addPlayer('${p}')">${p}</button>`
+  ).join("");
 
-  ["addA","addB","undoA","undoB"].forEach(id=>{
-    el(id).classList.toggle("disabled", !state.started);
-  });
-  el("startBtn").classList.toggle("disabled", state.started);
+  ["addA","addB","undoA","undoB"].forEach(id=>el(id).classList.toggle("disabled",!state.started));
+  el("startBtn").classList.toggle("disabled",state.started);
 
-  el("matchBoard").innerHTML = state.history.slice().reverse()
+  el("matchBoard").innerHTML=state.history.slice().reverse()
     .map(m=>`<div>${m.a} ${m.sa} – ${m.sb} ${m.b}</div>`).join("");
 
-  el("playerStats").innerHTML =
-    players.map(p=>`${p}: ${state.stats[p].win} v / ${state.stats[p].lose} t<br>`).join("");
+  /* === MEDALJER – KUN EFTER POINT === */
+  const hasResults = state.history.length > 0;
 
+  const ranked=[...players].sort((a,b)=>{
+    if(state.stats[b].win!==state.stats[a].win) return state.stats[b].win-state.stats[a].win;
+    return state.stats[a].lose-state.stats[b].lose;
+  });
+
+  el("playerStats").innerHTML=`
+    <div class="stats-row stats-header">
+      <div>Spiller</div><div>Vundet</div><div>Tabt</div>
+    </div>
+    ${ranked.map((p,i)=>`
+      <div class="stats-row">
+        <div>${hasResults ? (i===0?"🥇":i===1?"🥈":i===2?"🥉":"") : ""} ${p}</div>
+        <div>${state.stats[p].win}</div>
+        <div>${state.stats[p].lose}</div>
+      </div>
+    `).join("")}
+  `;
+
+  renderMatchStatus();
   save();
 }
 
 load();
 render();
 </script>
+
 </body>
 </html>
