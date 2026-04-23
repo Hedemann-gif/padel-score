@@ -8,323 +8,225 @@
 
 <style>
 body {
-  margin: 0;
-  background: #000;
-  color: white;
-  font-family: Arial, sans-serif;
-  text-align: center;
+  margin:0; background:#000; color:#fff;
+  font-family:Arial,sans-serif; text-align:center;
 }
-h1 { margin: 10px 0; }
+.container { padding:10px; max-width:900px; margin:auto; }
+h1 { margin:10px 0; }
 
-.container {
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+button {
+  padding:10px; margin:4px; font-size:16px;
+  border:none; border-radius:8px;
 }
+.primary { background:#00c853; color:white; }
+.warn { background:#ff9800; }
+.danger { background:#d50000; color:white; }
 
-.players button {
-  margin: 5px;
-  padding: 10px 16px;
-  font-size: 18px;
-  border-radius: 10px;
-  border: none;
-  background: #444;
-  color: white;
-}
-.players button.used {
-  background: #222;
-  opacity: 0.4;
-}
+button.disabled { opacity:.4; pointer-events:none; }
 
-.teams {
-  display: flex;
-  gap: 10px;
-}
+.players button.used { opacity:.4; }
 
-.team {
-  flex: 1;
-  background: #111;
-  border-radius: 15px;
-  padding: 10px;
-}
+.teams { display:flex; gap:10px; margin-top:10px; }
+.team { flex:1; background:#111; border-radius:10px; padding:10px; }
 
-.names { font-size: 18px; opacity: 0.85; min-height: 24px; }
-.score { font-size: 70px; font-weight: bold; }
-.games { font-size: 18px; }
-
-.controls {
-  display: flex;
-  gap: 6px;
-}
-
-button.action {
-  flex: 1;
-  padding: 12px;
-  font-size: 20px;
-  border-radius: 12px;
-  border: none;
-  background: #00c853;
-  color: white;
-}
-
-button.minus {
-  background: #ff9800;
-}
-
-.reset { background: #d50000; }
+.score { font-size:64px; font-weight:bold; }
 
 .board {
-  background: #111;
-  border-radius: 12px;
-  padding: 10px;
-  text-align: left;
-}
-.board div {
-  padding: 6px 0;
-  border-bottom: 1px solid #333;
+  margin-top:20px; background:#111;
+  padding:10px; border-radius:10px; text-align:left;
 }
 </style>
 </head>
 
 <body>
+<div class="container">
 
 <h1>🎾 PADEL SCORE</h1>
 
-<div class="container">
-
-<!-- SPILLERE -->
-<div class="players">
-  <h3>Spillere (klik)</h3>
-  <div id="playerList"></div>
-</div>
+<h3>Spillere</h3>
+<div id="playerList"></div>
 
 <p>Aktivt hold: <strong id="activeTeam">A</strong></p>
-<button onclick="setActiveTeam('A')">Vælg Hold A</button>
-<button onclick="setActiveTeam('B')">Vælg Hold B</button>
+<button onclick="setActiveTeam('A')">Hold A</button>
+<button onclick="setActiveTeam('B')">Hold B</button>
 
-<!-- HOLD -->
+<br><br>
+<button class="primary" id="startBtn" onclick="startMatch()">START KAMP</button>
+
 <div class="teams">
 
-  <div class="team">
-    <h2>Hold A</h2>
-    <div class="names" id="namesA"></div>
-    <div class="score" id="pointsA">0</div>
-    <div class="games">Partier: <span id="gamesA">0</span></div>
-    <div class="controls">
-      <button class="action" onclick="addPoint('A')">+ Point</button>
-      <button class="action minus" onclick="undoPoint()">−</button>
-    </div>
-  </div>
+<div class="team">
+  <h2>Hold A</h2>
+  <div id="namesA"></div>
+  <div class="score" id="pointsA">0</div>
+  Partier: <span id="gamesA">0</span><br>
+  <button class="primary disabled" id="addA" onclick="addPoint('A')">+ Point</button>
+  <button class="warn disabled" id="undoA" onclick="undoPoint()">−</button>
+</div>
 
-  <div class="team">
-    <h2>Hold B</h2>
-    <div class="names" id="namesB"></div>
-    <div class="score" id="pointsB">0</div>
-    <div class="games">Partier: <span id="gamesB">0</span></div>
-    <div class="controls">
-      <button class="action" onclick="addPoint('B')">+ Point</button>
-      <button class="action minus" onclick="undoPoint()">−</button>
-    </div>
-  </div>
+<div class="team">
+  <h2>Hold B</h2>
+  <div id="namesB"></div>
+  <div class="score" id="pointsB">0</div>
+  Partier: <span id="gamesB">0</span><br>
+  <button class="primary disabled" id="addB" onclick="addPoint('B')">+ Point</button>
+  <button class="warn disabled" id="undoB" onclick="undoPoint()">−</button>
+</div>
 
 </div>
 
-<button class="action" onclick="endMatch()">AFSLUT KAMP</button>
+<br>
+<button class="primary" onclick="endMatch()">AFSLUT KAMP</button>
 
-<!-- KAMP-SCOREBOARD -->
 <div class="board">
   <h3>📋 Kampe</h3>
   <div id="matchBoard"></div>
 </div>
 
-<!-- SPILLERSTATISTIK -->
 <div class="board">
   <h3>🏆 Spillerstatistik</h3>
   <div id="playerStats"></div>
 </div>
 
-<button class="action reset" onclick="newMatch()">NY KAMP</button>
+<br>
+<button class="danger" onclick="newMatch()">NY KAMP</button>
+<button class="danger" onclick="clearAll()">RYD AL DATA</button>
 
 </div>
 
 <script>
-/* ---------- DATA ---------- */
-const players = ["Mads","Jonas","Peter","Martin","Madsen"];
+const STORE = "padelStable";
 const scoreSteps = [0,15,30,40,"AD"];
+const players = ["Mads","Jonas","Peter","Martin","Madsen"];
 
-let activeTeam = "A";
-let teamA = [], teamB = [];
+let state = {
+  activeTeam:"A",
+  teamA:[],
+  teamB:[],
+  indexA:0,
+  indexB:0,
+  gamesA:0,
+  gamesB:0,
+  started:false,
+  history:[],
+  stats:{},
+  undo:[]
+};
+players.forEach(p=>state.stats[p]={win:0,lose:0});
 
-let indexA = 0, indexB = 0;
-let gamesA = 0, gamesB = 0;
+const el = id => document.getElementById(id);
 
-// Undo stack
-let undoStack = [];
+function save(){ localStorage.setItem(STORE, JSON.stringify(state)); }
+function load(){ const s=localStorage.getItem(STORE); if(s) state=JSON.parse(s); }
 
-// Kamp-historik og statistik
-let matchHistory = [];
-const stats = {};
-players.forEach(p => stats[p] = {win:0, lose:0});
+function setActiveTeam(t){ state.activeTeam=t; render(); }
 
-/* ---------- UI refs ---------- */
-const playerList = document.getElementById("playerList");
-const namesA = document.getElementById("namesA");
-const namesB = document.getElementById("namesB");
-const pointsA = document.getElementById("pointsA");
-const pointsB = document.getElementById("pointsB");
-const gamesAEl = document.getElementById("gamesA");
-const gamesBEl = document.getElementById("gamesB");
-const matchBoard = document.getElementById("matchBoard");
-const playerStats = document.getElementById("playerStats");
-
-/* ---------- HOLD ---------- */
-function setActiveTeam(t){
-  activeTeam = t;
-  document.getElementById("activeTeam").innerText = t;
+function addPlayer(p){
+  if(state.started) return;
+  if(state.teamA.includes(p)||state.teamB.includes(p)) return;
+  if(state.activeTeam==="A" && state.teamA.length<2) state.teamA.push(p);
+  if(state.activeTeam==="B" && state.teamB.length<2) state.teamB.push(p);
+  render();
 }
 
-function addPlayer(name){
-  if(teamA.includes(name) || teamB.includes(name)) return;
+function startMatch(){
+  if(state.teamA.length!==2||state.teamB.length!==2)
+    return alert("Vælg 2 spillere pr. hold");
+  state.started=true;
+  render();
+}
 
-  if(activeTeam === "A") {
-    if(teamA.length === 2) return alert("Hold A er fuldt");
-    teamA.push(name);
+function addPoint(t){
+  if(!state.started) return;
+  state.undo.push(JSON.parse(JSON.stringify(state)));
+
+  if(state.indexA===3 && state.indexB===3){
+    t==="A"?state.indexA=4:state.indexB=4;
+  } else if(state.indexA===4){
+    t==="A"?win("A"):resetDeuce();
+  } else if(state.indexB===4){
+    t==="B"?win("B"):resetDeuce();
   } else {
-    if(teamB.length === 2) return alert("Hold B er fuldt");
-    teamB.push(name);
+    t==="A"?state.indexA++:state.indexB++;
+    if(state.indexA===4 && state.indexB<3) win("A");
+    if(state.indexB===4 && state.indexA<3) win("B");
   }
   render();
 }
 
-function renderPlayers(){
-  playerList.innerHTML = "";
-  players.forEach(p=>{
-    const b = document.createElement("button");
-    b.textContent = p;
-    if(teamA.includes(p) || teamB.includes(p)) b.classList.add("used");
-    b.onclick = () => addPlayer(p);
-    playerList.appendChild(b);
-  });
-}
+function resetDeuce(){ state.indexA=3; state.indexB=3; }
 
-/* ---------- UNDO ---------- */
-function saveState(){
-  undoStack.push({indexA, indexB, gamesA, gamesB});
+function win(t){
+  t==="A"?state.gamesA++:state.gamesB++;
+  state.indexA=state.indexB=0;
 }
 
 function undoPoint(){
-  if(undoStack.length === 0) return;
-  const prev = undoStack.pop();
-  ({indexA, indexB, gamesA, gamesB} = prev);
+  if(!state.undo.length) return;
+  state = state.undo.pop();
   render();
 }
 
-/* ---------- SCORE LOGIK (AD) ---------- */
-function addPoint(team){
-  saveState();
-
-  if(indexA === 3 && indexB === 3){
-    team === "A" ? indexA = 4 : indexB = 4;
-    return render();
-  }
-
-  if(indexA === 4){
-    team === "A" ? winGame("A") : resetDeuce();
-    return;
-  }
-
-  if(indexB === 4){
-    team === "B" ? winGame("B") : resetDeuce();
-    return;
-  }
-
-  team === "A" ? indexA++ : indexB++;
-
-  if(indexA === 4 && indexB < 3) return winGame("A");
-  if(indexB === 4 && indexA < 3) return winGame("B");
-
-  render();
-}
-
-function resetDeuce(){
-  indexA = 3;
-  indexB = 3;
-  render();
-}
-
-function winGame(team){
-  team === "A" ? gamesA++ : gamesB++;
-  indexA = 0;
-  indexB = 0;
-  render();
-}
-
-/* ---------- AFSLUT KAMP ---------- */
 function endMatch(){
-  if(teamA.length !== 2 || teamB.length !== 2){
-    alert("Begge hold skal have 2 spillere");
-    return;
-  }
-
-  matchHistory.push({
-    a: teamA.join(" / "),
-    b: teamB.join(" / "),
-    sa: gamesA,
-    sb: gamesB
+  if(!state.started) return;
+  state.started=false;
+  state.history.push({
+    a:state.teamA.join(" / "),
+    b:state.teamB.join(" / "),
+    sa:state.gamesA,
+    sb:state.gamesB
   });
-
-  const winners = gamesA > gamesB ? teamA : teamB;
-  const losers  = gamesA > gamesB ? teamB : teamA;
-
-  winners.forEach(p => stats[p].win++);
-  losers.forEach(p => stats[p].lose++);
-
+  const winners = state.gamesA>state.gamesB?state.teamA:state.teamB;
+  const losers  = state.gamesA>state.gamesB?state.teamB:state.teamA;
+  winners.forEach(p=>state.stats[p].win++);
+  losers.forEach(p=>state.stats[p].lose++);
   render();
 }
 
-/* ---------- RENDER ---------- */
-function render(){
-  namesA.innerText = teamA.join(" / ");
-  namesB.innerText = teamB.join(" / ");
-  pointsA.innerText = scoreSteps[indexA];
-  pointsB.innerText = scoreSteps[indexB];
-  gamesAEl.innerText = gamesA;
-  gamesBEl.innerText = gamesB;
-  renderPlayers();
-  renderMatches();
-  renderStats();
-}
-
-function renderMatches(){
-  matchBoard.innerHTML = "";
-  matchHistory.slice().reverse().forEach(m=>{
-    matchBoard.innerHTML +=
-      `<div><strong>${m.a}</strong> ${m.sa} – ${m.sb} <strong>${m.b}</strong></div>`;
-  });
-}
-
-function renderStats(){
-  playerStats.innerHTML = "";
-  players.forEach(p=>{
-    const s = stats[p];
-    playerStats.innerHTML +=
-      `<div>${p}: vundet ${s.win} – tabt ${s.lose}</div>`;
-  });
-}
-
-/* ---------- NY KAMP ---------- */
 function newMatch(){
-  if(!confirm("Start ny kamp?")) return;
-  teamA = [];
-  teamB = [];
-  indexA = indexB = gamesA = gamesB = 0;
-  undoStack = [];
+  state.teamA=[]; state.teamB=[];
+  state.indexA=state.indexB=state.gamesA=state.gamesB=0;
+  state.started=false;
+  state.undo=[];
   render();
 }
 
+function clearAll(){
+  if(!confirm("Slet ALT data?")) return;
+  localStorage.removeItem(STORE);
+  location.reload();
+}
+
+function render(){
+  el("activeTeam").innerText=state.activeTeam;
+  el("namesA").innerText=state.teamA.join(" / ");
+  el("namesB").innerText=state.teamB.join(" / ");
+  el("pointsA").innerText=scoreSteps[state.indexA];
+  el("pointsB").innerText=scoreSteps[state.indexB];
+  el("gamesA").innerText=state.gamesA;
+  el("gamesB").innerText=state.gamesB;
+
+  el("playerList").innerHTML = players.map(p =>
+    `<button class="${state.teamA.includes(p)||state.teamB.includes(p)?'used':''}"
+     onclick="addPlayer('${p}')">${p}</button>`).join("");
+
+  ["addA","addB","undoA","undoB"].forEach(id=>{
+    el(id).classList.toggle("disabled", !state.started);
+  });
+
+  el("startBtn").classList.toggle("disabled", state.started);
+
+  el("matchBoard").innerHTML = state.history.slice().reverse()
+    .map(m=>`<div>${m.a} ${m.sa} – ${m.sb} ${m.b}</div>`).join("");
+
+  el("playerStats").innerHTML =
+    players.map(p=>`${p}: ${state.stats[p].win} v / ${state.stats[p].lose} t<br>`).join("");
+
+  save();
+}
+
+load();
 render();
 </script>
-
 </body>
 </html>
