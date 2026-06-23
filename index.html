@@ -19,7 +19,6 @@ body {
   max-width:900px;
   margin:auto;
 }
-h1 { margin:10px 0; }
 
 button {
   padding:10px;
@@ -29,9 +28,9 @@ button {
   border-radius:8px;
   cursor:pointer;
 }
-.primary { background:#00c853; color:white; }
+.primary { background:#00c853; color:white; } /* Grøn */
 .warn { background:#ff9800; }
-.danger { background:#d50000; color:white; }
+.danger { background:#d50000; color:white; } /* Rød */
 
 button.disabled {
   opacity:.4;
@@ -58,6 +57,19 @@ button.disabled {
   font-weight:bold;
 }
 
+/* Match controls */
+.match-actions {
+  display:flex;
+  gap:10px;
+  margin:15px 0;
+}
+.match-actions button {
+  flex:1;
+  font-size:18px;
+  padding:12px;
+}
+
+/* Board */
 .board {
   margin-top:20px;
   background:#111;
@@ -73,13 +85,13 @@ button.disabled {
   gap:10px;
   padding:6px 0;
   border-bottom:1px solid #333;
-  font-size:15px;
 }
 .stats-header {
   font-weight:bold;
   border-bottom:2px solid #555;
 }
 
+/* Status */
 #matchStatus {
   margin:10px 0;
   padding:10px;
@@ -109,28 +121,31 @@ button.disabled {
 
 <div class="teams">
 
-  <div class="team">
-    <h2>Hold A</h2>
-    <div id="namesA"></div>
-    <div class="score" id="pointsA">0</div>
-    Partier: <span id="gamesA">0</span><br>
-    <button class="primary disabled" id="addA" onclick="addPoint('A')">+ Point</button>
-    <button class="warn disabled" id="undoA" onclick="undoPoint()">−</button>
-  </div>
+<div class="team">
+  <h2>Hold A</h2>
+  <div id="namesA"></div>
+  <div class="score" id="pointsA">0</div>
+  Partier: <span id="gamesA">0</span><br>
+  <button class="primary disabled" id="addA" onclick="addPoint('A')">+ Point</button>
+  <button class="warn disabled" id="undoA" onclick="undoPoint()">−</button>
+</div>
 
-  <div class="team">
-    <h2>Hold B</h2>
-    <div id="namesB"></div>
-    <div class="score" id="pointsB">0</div>
-    Partier: <span id="gamesB">0</span><br>
-    <button class="primary disabled" id="addB" onclick="addPoint('B')">+ Point</button>
-    <button class="warn disabled" id="undoB" onclick="undoPoint()">−</button>
-  </div>
+<div class="team">
+  <h2>Hold B</h2>
+  <div id="namesB"></div>
+  <div class="score" id="pointsB">0</div>
+  Partier: <span id="gamesB">0</span><br>
+  <button class="primary disabled" id="addB" onclick="addPoint('B')">+ Point</button>
+  <button class="warn disabled" id="undoB" onclick="undoPoint()">−</button>
+</div>
 
 </div>
 
-<br>
-<button class="primary" onclick="endMatch()">AFSLUT KAMP</button>
+<!-- ✅ BYTTET RUNDT -->
+<div class="match-actions">
+  <button class="primary" id="newMatchBtn" onclick="newMatch()">NY KAMP</button>
+  <button class="danger" onclick="endMatch()">AFSLUT KAMP</button>
+</div>
 
 <div class="board">
   <h3>📋 Kampe</h3>
@@ -142,22 +157,20 @@ button.disabled {
   <div id="playerStats"></div>
 </div>
 
-<br>
-<button class="danger" onclick="newMatch()">NY KAMP</button>
 <button class="danger" onclick="clearAll()">RYD AL DATA</button>
 
 </div>
 
 <script>
-const STORAGE_KEY="padelFast";
+const STORAGE_KEY="padelFinal";
 const scoreSteps=[0,15,30,40,"AD"];
 const players=["Mads","Jonas","Peter","Martin","Madsen"];
 
 let state={
   activeTeam:"A",
   teamA:[], teamB:[],
-  indexA:0, indexB:0,
-  gamesA:0, gamesB:0,
+  indexA:0,indexB:0,
+  gamesA:0,gamesB:0,
   started:false,
   history:[],
   stats:{},
@@ -167,10 +180,13 @@ let state={
 players.forEach(p=>state.stats[p]={win:0,lose:0});
 const el=id=>document.getElementById(id);
 
+/* Storage */
 function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
 function load(){const s=localStorage.getItem(STORAGE_KEY);if(s)state=JSON.parse(s);}
 
+/* Hold */
 function setActiveTeam(t){state.activeTeam=t;render();}
+
 function addPlayer(p){
   if(state.started)return;
   if(state.teamA.includes(p)||state.teamB.includes(p))return;
@@ -186,20 +202,23 @@ function startMatch(){
   render();
 }
 
-/* Undo (hurtig) */
+/* Undo */
 function pushUndo(){
   state.undo.push({indexA:state.indexA,indexB:state.indexB,gamesA:state.gamesA,gamesB:state.gamesB});
   if(state.undo.length>50)state.undo.shift();
 }
+
 function undoPoint(){
   if(!state.undo.length)return;
   const u=state.undo.pop();
-  state.indexA=u.indexA; state.indexB=u.indexB;
-  state.gamesA=u.gamesA; state.gamesB=u.gamesB;
+  state.indexA=u.indexA;
+  state.indexB=u.indexB;
+  state.gamesA=u.gamesA;
+  state.gamesB=u.gamesB;
   render();
 }
 
-/* Point */
+/* Score */
 function addPoint(t){
   if(!state.started)return;
   pushUndo();
@@ -210,55 +229,69 @@ function addPoint(t){
     t==="A"?win("A"):resetDeuce();
   } else if(state.indexB===4){
     t==="B"?win("B"):resetDeuce();
-  } else {
+  } else{
     t==="A"?state.indexA++:state.indexB++;
     if(state.indexA===4&&state.indexB<3)win("A");
     if(state.indexB===4&&state.indexA<3)win("B");
   }
+
   render();
 }
+
 function resetDeuce(){state.indexA=3;state.indexB=3;}
 function win(t){t==="A"?state.gamesA++:state.gamesB++;state.indexA=state.indexB=0;}
 
-/* Afslut kamp */
+/* Kamp */
 function endMatch(){
   if(!state.started)return;
   state.started=false;
+
   state.history.push({
     a:state.teamA.join(" / "),
     b:state.teamB.join(" / "),
     sa:state.gamesA,
     sb:state.gamesB
   });
+
   const w=state.gamesA>state.gamesB?state.teamA:state.teamB;
   const l=state.gamesA>state.gamesB?state.teamB:state.teamA;
+
   w.forEach(p=>state.stats[p].win++);
   l.forEach(p=>state.stats[p].lose++);
+
   render();
 }
 
+/* ✅ RETTET: starter på Hold A */
 function newMatch(){
-  state.teamA=[]; state.teamB=[];
-  state.indexA=state.indexB=state.gamesA=state.gamesB=0;
-  state.started=false; state.undo=[];
+  state.teamA=[];
+  state.teamB=[];
+  state.indexA=0;
+  state.indexB=0;
+  state.gamesA=0;
+  state.gamesB=0;
+  state.started=false;
+  state.undo=[];
+  state.activeTeam="A";   // ✅ vigtigt fix
   render();
 }
+
 function clearAll(){
   if(!confirm("Slet ALT data?"))return;
   localStorage.removeItem(STORAGE_KEY);
   location.reload();
 }
 
-/* Kampstatus */
+/* Status */
 function renderMatchStatus(){
   const m=el("matchStatus");
   if(state.started){
     m.textContent="🟢 KAMP I GANG";
     m.style.background="#1b5e20";
   } else if(state.teamA.length===2&&state.teamB.length===2){
-    m.textContent="⚪ Klar til kamp – tryk START KAMP";
+    m.textContent="⚪ Klar til kamp";
     m.style.background="#333";
-  } else {
+  } else{
     m.textContent="⚪ Vælg spillere";
     m.style.background="#333";
   }
@@ -274,22 +307,27 @@ function render(){
   el("gamesA").innerText=state.gamesA;
   el("gamesB").innerText=state.gamesB;
 
-  el("playerList").innerHTML=players.map(p=>
-    `<button class="${state.teamA.includes(p)||state.teamB.includes(p)?"used":""}"
-      onclick="addPlayer('${p}')">${p}</button>`
-  ).join("");
+  el("playerList").innerHTML=players.map(p=>`
+    <button class="${state.teamA.includes(p)||state.teamB.includes(p)?"used":""}"
+     onclick="addPlayer('${p}')">${p}</button>`).join("");
 
-  ["addA","addB","undoA","undoB"].forEach(id=>el(id).classList.toggle("disabled",!state.started));
+  ["addA","addB","undoA","undoB"].forEach(id=>{
+    el(id).classList.toggle("disabled",!state.started);
+  });
+
   el("startBtn").classList.toggle("disabled",state.started);
+
+  /* NY KAMP låses under kamp */
+  el("newMatchBtn").classList.toggle("disabled",state.started);
 
   el("matchBoard").innerHTML=state.history.slice().reverse()
     .map(m=>`<div>${m.a} ${m.sa} – ${m.sb} ${m.b}</div>`).join("");
 
-  /* === MEDALJER – KUN EFTER POINT === */
-  const hasResults = state.history.length > 0;
+  const hasResults=state.history.length>0;
 
   const ranked=[...players].sort((a,b)=>{
-    if(state.stats[b].win!==state.stats[a].win) return state.stats[b].win-state.stats[a].win;
+    if(state.stats[b].win!==state.stats[a].win)
+      return state.stats[b].win-state.stats[a].win;
     return state.stats[a].lose-state.stats[b].lose;
   });
 
@@ -299,7 +337,7 @@ function render(){
     </div>
     ${ranked.map((p,i)=>`
       <div class="stats-row">
-        <div>${hasResults ? (i===0?"🥇":i===1?"🥈":i===2?"🥉":"") : ""} ${p}</div>
+        <div>${hasResults?(i===0?"🥇":i===1?"🥈":i===2?"🥉":""):""} ${p}</div>
         <div>${state.stats[p].win}</div>
         <div>${state.stats[p].lose}</div>
       </div>
